@@ -1,0 +1,21 @@
+# serverless.yml
+service: call-status
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: prod
+  region: us-west-1
+  memorySize: 512
+
+functions:
+  zobot:
+    handler: handler.zobot
+    events:
+      - http:
+          path: zobot
+          method: post
+          cors: true
+
+plugins:
+  - serverless-offline
