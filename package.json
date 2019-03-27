@@ -24,7 +24,5 @@
     "node-telegram-bot-api": "^0.30.0",
     "util": "^0.11.1"
   },
-  "devDependencies": {
-    "serverless-offline": "^4.8.1"
-  }
+  "devDependencies": {}
 }
