@@ -5,7 +5,8 @@ require('dotenv').config();
 const express = require('express')
 const bodyParser = require('body-parser')
 const axios = require('axios');
-var checkSession = require('./lib/app/checkSession');
+const checkSession = require('./lib/app/checkSession');
+const updateSession = require('./lib/app/updateSession');
 
 //Bot hosting variables
 //Change these variables to the address for your server
@@ -34,6 +35,26 @@ function logChat(msg){
   console.log(msg.chat.username + " :: " + msg.text);
 }
 
+//Function to send final message if something is not in the dictionary
+function finalTry(chatId){
+  bot.sendMessage(chatId,"Sorry, I didn't understand that. Type /help to see available commands.");
+}
+
+async function getSession(id){
+  try{
+
+    let resp = await checkSession(id);
+    return resp;
+
+  } catch(err){
+
+    console.log(err);
+    console.log('Could not process request due to an error');
+    return;
+
+  }
+}
+
 // We are receiving updates at the route below!
 app.post(`/bot${token}`, (req, res) => {
   bot.processUpdate(req.body);
@@ -45,6 +66,7 @@ app.listen(port, () => {
   console.log(`Express server is listening on ${port}`);
 });
 
+
 // Matches /echo [whatever]
 bot.onText(/\/echo (.+)/, function onEchoText(msg, match) {
   let resp = match[1];
@@ -53,11 +75,21 @@ bot.onText(/\/echo (.+)/, function onEchoText(msg, match) {
 });
 
 // Start message
-bot.onText(/\/start/, function onStartText(msg) {
-  let resp = 'Welcome to Zobot!';
-  bot.sendMessage(msg.chat.id, resp);
-  logChat(msg);
-  checkSession(msg.chat.id);
+bot.onText(/\/start/, async function onStartText(msg) {
+  let chatId = msg.chat.id;
+  try {
+    let resp = await getSession(chatId);
+    let active_session = resp.active_session;
+
+    if(active_session == 1){
+      bot.sendMessage(msg.chat.id,"Looks like you have an unfinished call. Please finish it or type /cancel to cancel the open call");
+    } else if(active_session == 0) {
+      bot.sendMessage(msg.chat.id,"Welcome to Zobot!");
+    }
+  } catch (err){
+    console.log(err);
+  }
+
 });
 
 // Start message
@@ -81,6 +113,36 @@ bot.onText(/\/zobot/, function onZobotOnlyText(msg) {
   }
 });
 
+// Cancel Calls
+bot.onText(/\/cancel/, function onCancelText(msg) {
+
+  const opts = {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: 'Yes, Cancel My Call',
+            // we shall check for this value when we listen
+            // for "callback_query"
+            callback_data: 'cancel_call'
+          }
+        ],
+        [
+          {
+            text: 'Complete My Call!',
+            // we shall check for this value when we listen
+            // for "callback_query"
+            callback_data: 'finish_call'
+          }
+        ],
+      ]
+    }
+  };
+
+  bot.sendMessage(msg.chat.id, 'Are you sure you want to cancell your active call?',opts);
+  logChat(msg);
+});
+
 // Zobot
 bot.onText(/\/ojo/, function onOjoText(msg) {
 
@@ -92,39 +154,7 @@ bot.onText(/\/ojo/, function onOjoText(msg) {
             text: 'Add Coin',
             // we shall check for this value when we listen
             // for "callback_query"
-            callback_data: 'add_call'
-          }
-        ],
-        [
-          {
-            text: 'Add Stop Loss',
-            // we shall check for this value when we listen
-            // for "callback_query"
-            callback_data: 'add_call'
-          }
-        ],
-        [
-          {
-            text: 'Add T1',
-            // we shall check for this value when we listen
-            // for "callback_query"
-            callback_data: 'add_call'
-          }
-        ],
-        [
-          {
-            text: 'Add T2',
-            // we shall check for this value when we listen
-            // for "callback_query"
-            callback_data: 'add_call'
-          }
-        ],
-        [
-          {
-            text: 'Add T3',
-            // we shall check for this value when we listen
-            // for "callback_query"
-            callback_data: 'add_call'
+            callback_data: 'add_zobot_call'
           }
         ],
         [
@@ -132,7 +162,7 @@ bot.onText(/\/ojo/, function onOjoText(msg) {
             text: 'List My Calls',
             // we shall check for this value when we listen
             // for "callback_query"
-            callback_data: 'my_calls'
+            callback_data: 'my_zobot_calls'
           }
         ]
       ]
@@ -187,7 +217,7 @@ bot.onText(/\/zobot (.+)/, function onZobotText(msg, match) {
 });
 
 // Handle callback queries
-bot.on('callback_query', function onCallbackQuery(callbackQuery) {
+bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
   const action = callbackQuery.data;
   const msg = callbackQuery.message;
   const msg_text = callbackQuery.message.text;
@@ -200,9 +230,8 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
       .then(res => {
         const data = res.data.message;
         bot.sendMessage(msg.chat.id,data);
-        console.log(msg.chat.username + " :: binance");
+        logChat(msg);
     })
-
   } else if (action === 'bittrex'){
     let coinUrl = 'https://1pj8odvnid.execute-api.us-west-1.amazonaws.com/prod/zobot_status/bittrex/'+msg_coin[3];
     axios
@@ -210,9 +239,8 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
       .then(res => {
         const data = res.data.message;
         bot.sendMessage(msg.chat.id,data);
-        console.log(msg.chat.username + " :: bittrex");
+        logChat(msg);
     })
-
   } else if (action === 'poloniex'){
     let coinUrl = 'https://1pj8odvnid.execute-api.us-west-1.amazonaws.com/prod/zobot_status/poloniex/'+msg_coin[3];
     axios
@@ -220,40 +248,184 @@ bot.on('callback_query', function onCallbackQuery(callbackQuery) {
       .then(res => {
         const data = res.data.message;
         bot.sendMessage(msg.chat.id,data);
-        console.log(msg.chat.username + " :: poloniex");
+        logChat(msg);
     })
-  } else if (action === "add_call"){
+  } else if (action === "add_zobot_call"){
+    //Check database to see if the user has an active session
+    let chatId = msg.chat.id;
+    try {
 
-    bot.sendMessage(msg.chat.id,"What coin is this call for? Please enter the symbol only such as BTC or ETH.");
-    console.log("Search database for open calls for " + msg.chat.id + ". If none are found, open a new call and respond with remaining items");
+      let resp = await getSession(chatId);
 
+      //A record exists in the database
+      if(resp){
+        let active_session = resp.active_session;
+        let session_type = resp.session_type;
+        let next_step = resp.next_step;
+        let id = resp.ID;
+
+        if(active_session == 1){
+          bot.sendMessage(msg.chat.id,"Looks like you have an unfinished call. Please finish it or type /cancel to cancel the open call");
+          logChat(msg);
+        } else if(active_session == 0) {
+          bot.sendMessage(msg.chat.id,"What coin is this call for? Please enter the symbol only such as BTC or ETH.");
+          updateSession(msg.chat.id,"coin_name","call",id);
+          logChat(msg);
+          //log next step coin_name
+          //create new conversation session for user if not already created (need function - send start/end and it will determine if row needed)
+          //make sure new conversation is active session = 1
+        }
+      //No conversation records in the database
+      } else {
+        bot.sendMessage(msg.chat.id,"What coin is this call for? Please enter the symbol only such as BTC or ETH.");
+        updateSession(msg.chat.id,"coin_name","call",0);
+        logChat(msg);
+      }
+    } catch (err){
+      console.log(err);
+    }
+  } else if (action === "zobot_call_complete"){
+    //log next step complete
+    //set conversation as inactive
+    //tell user call is stored
+    //provide instructions on how to retrieve call
+  } else if (action=== "binance_exchange"){
+    //Check database to see if the user has an active session
+    let chatId = msg.chat.id;
+    try {
+      let resp = await getSession(chatId);
+      if(resp){
+        let id = resp.ID;
+
+        //log next step t1
+        bot.sendMessage(msg.chat.id,"Great! I've got the coin name and exchange.");
+        bot.sendMessage(msg.chat.id,"Now I'll need your targets. Let's start with T1, please enter it below. Only enter the price in USD or Satoshis. Do not any symbols. It can be something like 4000.18 or .00003432.");
+        bot.sendMessage(msg.chat.id,"Ok, go ahead and enter T1.")
+        updateSession(msg.chat.id,"t1","call",id);
+        logChat(msg);
+      }
+    } catch (err){
+      console.log(err);
+    }
   }
-
 });
 
 //Always checks messages to see if anaything needs to happen
-bot.on('message', (msg) => {
-  //Check database to see if the user has an active session
-  //checkCall(msg.chat.id) //checks to see if there are any opens calls
-  //if there are open calls offer to delete or complete
-  //addCall(msg.chat.id,"add_call"); //creates a new call
-  const active_session = 1;
-  if(active_session==1){
-    const session_type = "call";
-    if(session_type == "call"){
-      const next_step = "coin_name";
-      if(next_step=="coin_name"){
-        //bot.sendMessage(msg.chat.id,"Great, looks like you want to make a call for " + msg.text + ". Next, I'll need to know the stop loss you recommend for this call. Please enter it below.");
+bot.on('message', async function onMessageQuery(msg) {
 
-        bot.onText(/\/moon/, function onStartText(msg) {
-          let resp = 'To the moon!';
-          bot.sendMessage(msg.chat.id, resp);
-          logChat(msg);
-        });
-      }
-    }
-
+  //Checks to see if message starts with /
+  //If it does, it ignores, otherwise attempts to process
+  if(msg.text.substring(0,1)=="/"){
+    return;
   } else {
+    //Check database to see if the user has an active session
+    let chatId = msg.chat.id;
+    try {
+      const resp = await getSession(chatId);
+      if(resp){
+        let active_session = resp.active_session;
+        let session_type = resp.session_type;
+        let next_step = resp.next_step;
+        let id = resp.ID
 
+        if(active_session == 1){
+          if(next_step=="coin_name" || next_step=="start"){
+            //log next step exchange
+            const opts = {
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: 'Binance',
+                      // Check for this value when we listen
+                      // for "callback_query"
+                      callback_data: 'binance_exchange'
+                    }
+                  ],
+                  [
+                    {
+                      text: 'Bittrrex',
+                      // Check for this value when we listen
+                      // for "callback_query"
+                      callback_data: 'bittrex_exchange'
+                    }
+                  ],
+                  [
+                    {
+                      text: 'Poloniex',
+                      // Check for this value when we listen
+                      // for "callback_query"
+                      callback_data: 'poloniex_exchange'
+                    }
+                  ],
+                ]
+              }
+            };
+            bot.sendMessage(msg.chat.id,"Thanks - I'll note that this is a call for "+msg.text);
+            bot.sendMessage(msg.chat.id,"Next, I'll need the exchange where "+msg.text+" is traded and corresponds to this call",opts);
+            updateSession(msg.chat.id,"exchange","call",id);
+            logChat(msg);
+
+          } else if (next_step=="t1"){
+            //log next step t2
+            bot.sendMessage(msg.chat.id,"T1 recorded.");
+            bot.sendMessage(msg.chat.id,"What is T2?");
+            updateSession(msg.chat.id,"t2","call",id);
+            logChat(msg);
+          } else if (next_step=="t2"){
+            //log next step t3
+            bot.sendMessage(msg.chat.id,"T2 recorded.");
+            bot.sendMessage(msg.chat.id,"What is T3?");
+            updateSession(msg.chat.id,"t3","call",id);
+            logChat(msg);
+          } else if (next_step=="t3"){
+            //log next step stop_loss
+            bot.sendMessage(msg.chat.id,"T3 recorded.");
+            bot.sendMessage(msg.chat.id,"Now I'll need your recommended stop loss?");
+            updateSession(msg.chat.id,"stop_loss","call",id);
+            logChat(msg);
+          } else if (next_step=="stop_loss"){
+            //log next step wrap_up
+            //log date, type, user, status
+            const opts = {
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: 'Submit My Call',
+                      // Check for this value when we listen
+                      // for "callback_query"
+                      callback_data: 'submit_call'
+                    }
+                  ],
+                  [
+                    {
+                      text: 'Start Again',
+                      // Check for this value when we listen
+                      // for "callback_query"
+                      callback_data: 'start_call_again'
+                    }
+                  ]
+                ]
+              }
+            };
+            bot.sendMessage(msg.chat.id,"Ok, I have all the information I need. Please verify the following information and respond accordingly:",opts);
+            updateSession(msg.chat.id,"wrap_up","call",id);
+            logChat(msg);
+          } else if (next_step=="wrap_up"){
+            //return full call details
+            //show keyboard with callback query zobot_call_complete
+            bot.sendMessage(msg.chat.id,"Thanks! I've recorded your call and will be monitoring status regularly. You caan update the stop loss on this call or monitor the rest of your calls by typing /ojo and selecting My Calls.");
+            updateSession(msg.chat.id,"complete","call",id);
+            logChat(msg);
+          }
+        } else if(active_session == 0) {
+          //###########COMPLETE THIS AREA###########
+        }
+      }
+    } catch (err){
+      console.log(err);
+    }
   }
+
 })
