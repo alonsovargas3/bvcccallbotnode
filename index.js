@@ -139,7 +139,7 @@ bot.onText(/\/cancel/, function onCancelText(msg) {
     }
   };
 
-  bot.sendMessage(msg.chat.id, 'Are you sure you want to cancell your active call?',opts);
+  bot.sendMessage(msg.chat.id, 'Are you sure you want to cancel your active call?',opts);
   logChat(msg);
 });
 
@@ -270,6 +270,7 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
         } else if(active_session == 0) {
           bot.sendMessage(msg.chat.id,"What coin is this call for? Please enter the symbol only such as BTC or ETH.");
           updateSession(msg.chat.id,"coin_name","call",id);
+          console.log("id="+id);
           logChat(msg);
           //log next step coin_name
           //create new conversation session for user if not already created (need function - send start/end and it will determine if row needed)
@@ -302,6 +303,23 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
         bot.sendMessage(msg.chat.id,"Now I'll need your targets. Let's start with T1, please enter it below. Only enter the price in USD or Satoshis. Do not any symbols. It can be something like 4000.18 or .00003432.");
         bot.sendMessage(msg.chat.id,"Ok, go ahead and enter T1.")
         updateSession(msg.chat.id,"t1","call",id);
+        logChat(msg);
+      }
+    } catch (err){
+      console.log(err);
+    }
+  } else if (action==="cancel_call"){
+    //Check database to see if the user has an active session
+    let chatId = msg.chat.id;
+    try {
+      let resp = await getSession(chatId);
+      if(resp){
+        let id = resp.ID;
+
+        //log next step t1
+        bot.sendMessage(msg.chat.id,"Your call has been cancelled.");
+        bot.sendMessage(msg.chat.id,"This only applies to the most recent call that was unfinished - the rest of your calls are still stored");
+        updateSession(msg.chat.id,"cancelled","call",id);
         logChat(msg);
       }
     } catch (err){
