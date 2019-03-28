@@ -12,7 +12,7 @@ const updateSession = require('./lib/app/updateSession');
 //Change these variables to the address for your server
 //Also make sure that the PORT variable is defined in your .env file
 //This will make sure that the Telegram bot knows where to find this bot
-const url = 'https://ee8e1585.ngrok.io';
+const url = process.env.BASEURL;
 const port = process.env.PORT;
 const token = process.env.TOKEN;
 
