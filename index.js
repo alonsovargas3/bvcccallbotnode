@@ -1,3 +1,7 @@
+//<--------- ZOBOT TELEGRAM BOT --------->
+// Bot resopnds to telegram users with commands on Zobot information
+// and the Zobot call system, called "Ojo". Users can interact with the
+// bot directly or it can be added to a group
 'use strict';
 process.env["NTBA_FIX_319"] = 1;
 require('dotenv').config();
@@ -15,7 +19,7 @@ const url = process.env.BASEURL;
 const port = process.env.PORT;
 const token = process.env.TOKEN;
 
-//<---------------- EXPRESS ---------------->
+//<-------------------------------- EXPRESS WEB SERVER -------------------------------->
 
 // Calls the express function "express()" and puts new Express application
 // inside the app variable to start a new Express application
@@ -38,7 +42,7 @@ app.post(`/bot${token}`, (req, res) => {
   res.sendStatus(200);
 });
 
-//<---------------- ZOBOT ---------------->
+//<-------------------------------- ZOBOT ALL FUNCTIONALITY -------------------------------->
 
 // Telegram module include and cretion of new bot instance
 const TelegramBot = require('node-telegram-bot-api');
@@ -74,6 +78,8 @@ async function getSession(id){
 
   }
 }
+
+//<************* ZOBOT COMMANDS *************>
 
 // Matches /echo [whatever] and returns to use
 // This is a testing function that will allow developer to
@@ -140,16 +146,12 @@ bot.onText(/\/cancel/, function onCancelText(msg) {
         [
           {
             text: 'Yes, Cancel My Call',
-            // we shall check for this value when we listen
-            // for "callback_query"
             callback_data: 'cancel_call'
           }
         ],
         [
           {
             text: 'Complete My Call!',
-            // we shall check for this value when we listen
-            // for "callback_query"
             callback_data: 'finish_call'
           }
         ],
@@ -173,16 +175,12 @@ bot.onText(/\/ojo/, function onOjoText(msg) {
         [
           {
             text: 'Add Coin',
-            // we shall check for this value when we listen
-            // for "callback_query"
             callback_data: 'add_zobot_call'
           }
         ],
         [
           {
             text: 'List My Calls',
-            // we shall check for this value when we listen
-            // for "callback_query"
             callback_data: 'my_zobot_calls'
           }
         ]
@@ -202,7 +200,6 @@ bot.onText(/\/ojo/, function onOjoText(msg) {
 bot.onText(/\/zobot (.+)/, function onZobotText(msg, match) {
   const chat_coin = match[1];
   const coin = chat_coin.toLowerCase();
-  //console.log("coin="+coin);
 
   const opts = {
     reply_markup: {
@@ -210,24 +207,18 @@ bot.onText(/\/zobot (.+)/, function onZobotText(msg, match) {
         [
           {
             text: 'Binance',
-            // we shall check for this value when we listen
-            // for "callback_query"
             callback_data: 'binance'
           }
         ],
         [
           {
             text: 'Bittrrex',
-            // we shall check for this value when we listen
-            // for "callback_query"
             callback_data: 'bittrex'
           }
         ],
         [
           {
             text: 'Poloniex',
-            // we shall check for this value when we listen
-            // for "callback_query"
             callback_data: 'poloniex'
           }
         ],
@@ -239,6 +230,8 @@ bot.onText(/\/zobot (.+)/, function onZobotText(msg, match) {
   logChat(msg);
 
 });
+
+//<************* ZOBOT CALLBACK QUERIES *************>
 
 // Handle callback queries - Callback queries are keyboard responses
 bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
@@ -294,7 +287,6 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
         } else if(active_session == 0) {
           bot.sendMessage(msg.chat.id,"What coin is this call for? Please enter the symbol only such as BTC or ETH.");
           updateSession(msg.chat.id,"coin_name","call",id);
-          console.log("id="+id);
           logChat(msg);
           //log next step coin_name
           //create new conversation session for user if not already created (need function - send start/end and it will determine if row needed)
@@ -351,6 +343,8 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
     }
   }
 });
+
+//<************* ZOBOT ALL MESSAGES *************>
 
 //Always checks messages to see if anaything needs to happen
 bot.on('message', async function onMessageQuery(msg) {
@@ -459,16 +453,12 @@ bot.on('message', async function onMessageQuery(msg) {
                   [
                     {
                       text: 'Submit My Call',
-                      // Check for this value when we listen
-                      // for "callback_query"
                       callback_data: 'submit_call'
                     }
                   ],
                   [
                     {
                       text: 'Start Again',
-                      // Check for this value when we listen
-                      // for "callback_query"
                       callback_data: 'start_call_again'
                     }
                   ]
@@ -480,7 +470,7 @@ bot.on('message', async function onMessageQuery(msg) {
             logChat(msg);
 
           // CALL STEP - Finish call process
-          // Confirm details of call with user 
+          // Confirm details of call with user
           } else if (next_step=="wrap_up"){
             //return full call details
             //show keyboard with callback query zobot_call_complete
