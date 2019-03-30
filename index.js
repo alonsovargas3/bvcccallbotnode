@@ -246,7 +246,7 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
       .get(coinUrl)
       .then(res => {
         const data = res.data.message;
-        bot.sendMessage(msg.chat.id,data,{parse_mode="markdown"});
+        bot.sendMessage(msg.chat.id,data,{parse_mode : "markdown"});
         logChat(msg);
     })
   } else if (action === 'bittrex'){
@@ -255,7 +255,7 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
       .get(coinUrl)
       .then(res => {
         const data = res.data.message;
-        bot.sendMessage(msg.chat.id,data,{parse_mode="markdown"});
+        bot.sendMessage(msg.chat.id,data,{parse_mode : "markdown"});
         logChat(msg);
     })
   } else if (action === 'poloniex'){
@@ -264,7 +264,7 @@ bot.on('callback_query', async function onCallbackQuery(callbackQuery) {
       .get(coinUrl)
       .then(res => {
         const data = res.data.message;
-        bot.sendMessage(msg.chat.id,data,{parse_mode="markdown"});
+        bot.sendMessage(msg.chat.id,data,{parse_mode : "markdown"});
         logChat(msg);
     })
   } else if (action === "add_zobot_call"){
